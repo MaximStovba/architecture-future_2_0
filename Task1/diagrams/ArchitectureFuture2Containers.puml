@@ -1,0 +1,79 @@
+@startuml Архитектура_Будущее_2_0
+title Диаграмма контейнеров: Целевая архитектура через 1 год
+
+top to bottom direction
+
+!include ./template/C4_Component.puml
+
+
+' Пользователи
+Person(clinician, "Врач / Оператор", "Работает с медицинскими данными")
+Person(biUser, "Бизнес-пользователь", "Использует витрину и каталог данных")
+
+' Медицинская зона: чувствительные данные не идут в аналитику
+Boundary(medicalZone, "Медицинская зона (данные вне аналитики)") {
+  System_Boundary(clinic, "Клиники") {
+    Container(clientUI, "Клиентский интерфейс", "Power Builder", "Ввод и просмотр мед. карт и истории болезни")
+    Container(dwh, "Легаси DWH", "MS SQL Server 2008", "Историческое хранилище мед. и фин. данных")
+  }
+
+  System_Boundary(ai, "ИИ-сервисы") {
+    Container(aiCore, "ИИ-ядро", "Python", "Анализ мед. изображений и истории болезни")
+    Container(aiAPI, "AI API", "FastAPI", "Доступ к ИИ через API")
+  }
+
+  Rel(clinician, clientUI, "Работает с медицинскими данными")
+  Rel(clientUI, dwh, "Передаёт мед. карты и исследования")
+  Rel(dwh, aiCore, "Передаёт мед. карты, изображения")
+  Rel(aiCore, dwh, "Результаты анализа ИИ")
+}
+
+' Финтех-домен
+System_Boundary(fintech, "Финтех-сервисы") {
+  Container(finCore, "Финансовое ядро", "Go / Java", "Кредиты, счета, транзакции")
+  Container(finAPI, "Финансовые API", "REST / gRPC", "Внешний доступ к банковским данным")
+}
+
+' Дата-платформа
+System_Boundary(data, "Дата-платформа") {
+  Container(objectStorage, "Object Storage", "S3 / MinIO", "Хранение не-медицинских данных (Parquet и др.)")
+  Container(metadataLayer, "Metadata Layer", "Apache Iceberg", "Таблицы, транзакции, схемы")
+  Container(dataMarts, "Data Marts", "ClickHouse", "Агрегированные витрины по доменам")
+  Container(dataPortal, "Data Portal", "Tableau", "Портал самообслуживания для аналитиков")
+  Container(dataHub, "DataHub", "LinkedIn DataHub", "Каталог, Lineage, управление доступом")
+}
+
+' Интеграция
+System_Boundary(integration, "Интеграционный слой") {
+  Container(eventBus, "Event Streaming", "Kafka", "Обмен событиями между доменами")
+  Container(apiGateway, "API Gateway", "Kong", "Общий шлюз доступа к API")
+}
+
+' Головной офис
+System_Boundary(hq, "Головной офис") {
+  Container(erp, "ERP / HR система", "1C / SAP", "Финансы, персонал, инвентарь")
+}
+
+' Интеграция данных (только немедицинских)
+Rel(finCore, eventBus, "Публикует транзакции")
+Rel(erp, eventBus, "Публикует финансы, кадры, инвентарь")
+Rel(eventBus, objectStorage, "Записывает сырые события")
+
+Rel(objectStorage, metadataLayer, "Iceberg управляет таблицами")
+Rel(metadataLayer, dataMarts, "Подготовка витрин")
+Rel(dataMarts, dataPortal, "Источник для BI")
+Rel(biUser, dataPortal, "Создаёт и использует отчёты")
+
+' 🔍 DataHub метаданные (немедицинские)
+Rel(dataHub, objectStorage, "Каталог хранилищ")
+Rel(dataHub, metadataLayer, "Каталог таблиц Iceberg")
+Rel(dataHub, dataMarts, "Каталог витрин ClickHouse")
+Rel(dataHub, eventBus, "Lineage событий")
+Rel(dataHub, dataPortal, "Каталог BI-источников")
+Rel(biUser, dataHub, "Находит и исследует доступные данные")
+
+' API маршрутизация
+Rel(apiGateway, aiAPI, "Проксирует доступ к ИИ")
+Rel(apiGateway, finAPI, "Проксирует доступ к финтех")
+
+@enduml
