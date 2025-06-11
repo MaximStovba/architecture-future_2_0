@@ -5,7 +5,6 @@ top to bottom direction
 
 !include ./template/C4_Component.puml
 
-
 ' Пользователи
 Person(clinician, "Врач / Оператор", "Работает с медицинскими данными")
 Person(biUser, "Бизнес-пользователь", "Использует витрину и каталог данных")
@@ -46,6 +45,7 @@ System_Boundary(data, "Дата-платформа") {
 ' Интеграция
 System_Boundary(integration, "Интеграционный слой") {
   Container(eventBus, "Event Streaming", "Kafka", "Обмен событиями между доменами")
+  Container(airbyte, "Airbyte", "Airbyte", "ETL из Kafka в объектное хранилище")
   Container(apiGateway, "API Gateway", "Kong", "Общий шлюз доступа к API")
 }
 
@@ -57,7 +57,9 @@ System_Boundary(hq, "Головной офис") {
 ' Интеграция данных (только немедицинских)
 Rel(finCore, eventBus, "Публикует транзакции")
 Rel(erp, eventBus, "Публикует финансы, кадры, инвентарь")
-Rel(eventBus, objectStorage, "Записывает сырые события")
+
+Rel(eventBus, airbyte, "Передаёт события (Kafka topics)")
+Rel(airbyte, objectStorage, "Загружает в объектное хранилище")
 
 Rel(objectStorage, metadataLayer, "Iceberg управляет таблицами")
 Rel(metadataLayer, dataMarts, "Подготовка витрин")
