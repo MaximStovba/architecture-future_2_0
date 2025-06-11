@@ -1,0 +1,132 @@
+@startuml
+left to right direction
+hide empty members
+
+' --- Определение стилей для стереотипов ---
+skinparam package {
+    borderColor #A9A9A9
+    backgroundColor #F8F8F8
+}
+skinparam database {
+    borderColor #3c78d8
+    backgroundColor #cfe2f3
+}
+
+' --- Стереотипы для кастомных доменов ---
+skinparam package<<ClinicDomain>> {
+    backgroundColor #FFDDC1
+    borderColor #e69138
+}
+skinparam database<<IsolatedStorage>> {
+    backgroundColor #f4cccc
+    borderColor #cc0000
+}
+skinparam package<<AnalyticsDomain>> {
+    backgroundColor #D5E8D4
+    borderColor #6aa84f
+}
+skinparam package<<GovernanceDomain>> {
+    backgroundColor #FDEBD0
+    borderColor #f1c232
+}
+skinparam cloud {
+    backgroundColor #E5E5E5
+    borderColor #666666
+}
+
+
+' ===== 1. Внешние Сущности и Пользователи =====
+package "Внешние сущности и Пользователи" {
+  actor "Врачи, операторы клиник" as U_Clinic
+  actor "Клиенты финтех-сервисов" as U_Fintech
+  actor "Сотрудники бэк-офиса" as U_HQ
+  actor "Бизнес-аналитики" as U_BI
+  actor "Data Governance команда" as U_Gov
+  actor "Новые бизнесы\n(Фармацевтика)" as Ext_Pharma
+  actor "Новые бизнесы\n(Электроника)" as Ext_Electro
+}
+
+
+' ===== 2. Домены, Интеграция, Хранение =====
+package "Архитектура Данных «Будущее 2.0»" {
+
+  ' --- Центральный интеграционный слой ---
+  cloud "Интеграционный слой\n(Kafka, Airbyte, API GW)" as Integration
+
+  package "Домен Clinic" <<ClinicDomain>> {
+    database "DWH (Мед. данные)" as Clinic_DWH <<IsolatedStorage>>
+  }
+
+  package "Домен AI-Med" <<ClinicDomain>> {
+    database "DWH для обработки ИИ" as AI_DWH <<IsolatedStorage>>
+    component "ИИ-модели" as AI_Service
+  }
+  
+  package "Домен Fintech" {
+    component "Финтех-сервисы\n(Go/Java)" as Fintech_Services
+    database "Fintech Lake\n(Object Storage, Iceberg)" as Fintech_Lake
+    database "Финтех-витрина" as Fintech_DM
+  }
+
+  package "Домен HQ (Финансы и HR)" {
+    component "ERP-системы" as HQ_Services
+    database "HQ Lake\n(Object Storage, Iceberg)" as HQ_Lake
+    database "HQ-витрина" as HQ_DM
+  }
+  
+  package "Домен Analytics Platform" <<AnalyticsDomain>> {
+    database "ClickHouse\n(Сводные витрины)" as Analytics_WH
+    component "Data Portal / BI" as Analytics_Portal
+  }
+  
+  package "Домен Governance" <<GovernanceDomain>> {
+    component "DataHub\n(Каталог, lineage)" as Gov_Service
+  }
+}
+
+' ===== 3. Потоки данных между элементами =====
+
+' --- Потоки от пользователей к системам ---
+U_Clinic --> Clinic_DWH : "Ввод мед. данных"
+U_Fintech --> Fintech_Services : "Транзакции, кредиты"
+U_HQ --> HQ_Services : "Зарплаты, персонал"
+Fintech_Services -> Integration : "События о транзакциях"
+HQ_Services -> Integration : "Выгрузка данных"
+
+' --- Клинические и ИИ потоки ---
+Clinic_DWH -> Integration : "Анонимизированные данные"
+Integration --> AI_DWH : "Данные для обработки"
+AI_DWH --> AI_Service
+AI_Service -> Integration : "Результат ИИ-диагностики"
+Integration -> Clinic_DWH : "\n\nРезультат ИИ-диагностики"
+' Clinic_DWH -> Integration : "4.2. События для биллинга"
+
+' --- Потоки в Data Lakehouse ---
+Integration --> Fintech_Lake : "Поток сырых данных"
+Fintech_Lake --> Fintech_DM : "ETL/ELT"
+Integration --> HQ_Lake : "Поток сырых данных"
+HQ_Lake --> HQ_DM : "ETL/ELT"
+
+' --- Потоки от новых бизнесов ---
+Ext_Pharma -> Integration : "Данные партнеров"
+Ext_Electro -> Integration : "Данные партнеров"
+Integration --> HQ_Lake : "Интеграция данных партнеров"
+
+' --- Аналитические потоки ---
+Fintech_DM --> Analytics_WH : "Данные из финтех-витрины"
+HQ_DM --> Analytics_WH : "Данные из HQ-витрины"
+Analytics_WH --> Analytics_Portal : "Данные для отчетов"
+U_BI -> Analytics_Portal : "Запросы, построение отчетов"
+
+' --- Потоки управления данными (Governance) ---
+U_Gov -> Gov_Service : "Управление каталогом"
+Analytics_Portal --> Gov_Service : "Запрос метаданных\n"
+Gov_Service --> Analytics_Portal : "\nМетаданные, глоссарий"
+
+' --- Потоки сбора метаданных (пунктир) ---
+Clinic_DWH ..> Gov_Service : "Сбор метаданных"
+Fintech_Lake ..> Gov_Service : "Сбор метаданных"
+HQ_Lake ..> Gov_Service : "Сбор метаданных"
+Analytics_WH ..> Gov_Service : "Сбор метаданных"
+
+@enduml
