@@ -51,7 +51,7 @@ package "Внешние сущности и Пользователи" {
 package "Архитектура Данных «Будущее 2.0»" {
 
   ' --- Центральный интеграционный слой ---
-  cloud "Интеграционный слой\n(Kafka, Airbyte, API GW)" as Integration
+  cloud "Интеграционный слой\n(Kafka, Kafka Connect, API GW)" as Integration
 
   package "Домен Clinic" <<ClinicDomain>> {
     database "DWH (Мед. данные)" as Clinic_DWH <<IsolatedStorage>>

@@ -7,7 +7,7 @@
 | **Финтех (Fintech)**                  | Транзакции, кредиты, счета                  | Финтех-команда           | Object Storage → Iceberg → Data Marts | События публикуются в Kafka                             |
 | **Финансы и HR (HQ)**                 | ERP, зарплаты, инвентарь, персонал          | Бэк-офис                 | Object Storage → Iceberg → Data Marts | Отдельные BI-витрины                                    |
 | **Аналитика (Analytics Platform)**    | Витрина данных, BI, DataHub                 | Центр компетенций данных | ClickHouse, Data Portal, DataHub      | Объединяет доступ к витринам, без доступа к медданным   |
-| **Интеграция (Integration Layer)**    | Kafka, API Gateway, Airbyte                 | Архитектура и платформа  | Kafka, Airbyte                        | Транспорт данных между доменами, без логики             |
+| **Интеграция (Integration Layer)**    | Kafka, API Gateway, Kafka Connect                 | Архитектура и платформа  | Kafka, Kafka Connect                        | Транспорт данных между доменами, без логики             |
 | **Каталог и управление (Governance)** | Каталог, lineage, доступы                   | Data Governance команда  | DataHub                               | Сквозная прозрачность по всем доступным данным          |
 
 
